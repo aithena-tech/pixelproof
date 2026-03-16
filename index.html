@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PixelProof by AITHENA-Tech</title>
+  <meta name="description" content="PixelProof helps assess image authenticity clues with a practical, transparent analysis of structure, metadata presence, and visible signal quality." />
+  <style>
+    :root {
+      --bg: #06070a;
+      --bg-elev: #0d1017;
+      --bg-elev-2: #131826;
+      --surface: rgba(255, 255, 255, 0.04);
+      --surface-strong: rgba(255, 255, 255, 0.08);
+      --text: #edf1ff;
+      --text-muted: #a6afc4;
+      --line: rgba(201, 220, 255, 0.16);
+      --accent: #78a6ff;
+      --accent-2: #a08bff;
+      --good: #7fe6bb;
+      --warn: #ffd18f;
+      --bad: #ff9da3;
+      --radius: 18px;
+      --radius-sm: 12px;
+      --shadow: 0 18px 60px rgba(3, 8, 22, 0.42);
+      --max-w: 1180px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background:
+        radial-gradient(circle at 18% 10%, rgba(108, 132, 255, 0.15), transparent 38%),
+        radial-gradient(circle at 88% 20%, rgba(146, 122, 255, 0.13), transparent 36%),
+        linear-gradient(180deg, #06070a 0%, #070910 100%);
+      color: var(--text);
+      line-height: 1.5;
+      scroll-behavior: smooth;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .container {
+      width: min(var(--max-w), calc(100% - 2.4rem));
+      margin: 0 auto;
+    }
+
+    .section {
+      padding: 5.2rem 0;
+      position: relative;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.8rem;
+      font-size: 0.74rem;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: #cfd9ff;
+      background: rgba(120, 166, 255, 0.1);
+      border: 1px solid rgba(155, 184, 255, 0.24);
+      border-radius: 999px;
+      margin-bottom: 1.1rem;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 4.8vw, 4rem);
+      max-width: 14ch;
+    }
+
+    h2 {
+      font-size: clamp(1.5rem, 3.2vw, 2.5rem);
+      margin-bottom: 1rem;
+    }
+
+    p {
+      margin: 0;
+      color: var(--text-muted);
+      max-width: 70ch;
+    }
+
+    .section-lead {
+      margin-bottom: 2rem;
+      font-size: 1.04rem;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      backdrop-filter: blur(10px);
+      background: rgba(6, 7, 10, 0.66);
+      border-bottom: 1px solid rgba(147, 166, 200, 0.18);
+    }
+
+    .nav-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 72px;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: 0.03em;
+    }
+
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background:
+        radial-gradient(circle at 20% 20%, #c4d5ff, transparent 55%),
+        linear-gradient(145deg, #3656bf, #7161d8 60%, #86bbff);
+      box-shadow: 0 0 28px rgba(126, 156, 255, 0.38);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      inset: 1px;
+      border: 1px solid rgba(255, 255, 255, 0.26);
+      border-radius: 9px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      color: #c5cee4;
+      font-size: 0.9rem;
+    }
+
+    .nav-links a:hover { color: #eef2ff; }
+
+    .hero {
+      padding-top: 5.8rem;
+      display: grid;
+      grid-template-columns: 1.06fr 0.94fr;
+      gap: 2.6rem;
+      align-items: center;
+    }
+
+    .hero p {
+      margin-top: 1.35rem;
+      font-size: 1.08rem;
+      max-width: 55ch;
+    }
+
+    .cta-row {
+      margin-top: 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.9rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-weight: 600;
+      font-size: 0.92rem;
+      padding: 0.75rem 1.2rem;
+      transition: all 180ms ease;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      color: #0a1025;
+      background: linear-gradient(120deg, #b7cbff, #9bc3ff 35%, #bba8ff);
+      box-shadow: 0 10px 30px rgba(130, 151, 255, 0.35);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.04);
+    }
+
+    .btn-ghost {
+      color: #dde6ff;
+      background: rgba(128, 148, 194, 0.12);
+      border-color: rgba(166, 186, 230, 0.28);
+    }
+
+    .btn-ghost:hover {
+      background: rgba(145, 171, 230, 0.2);
+      border-color: rgba(176, 200, 248, 0.44);
+    }
+
+    .hero-panel {
+      position: relative;
+      border-radius: 22px;
+      border: 1px solid var(--line);
+      background: linear-gradient(160deg, rgba(21, 29, 46, 0.9), rgba(12, 15, 26, 0.94));
+      box-shadow: var(--shadow);
+      padding: 1.1rem;
+      min-height: 420px;
+      overflow: hidden;
+    }
+
+    .hero-panel::before {
+      content: "";
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(132, 163, 255, 0.21), transparent 65%);
+      top: -130px;
+      right: -120px;
+      pointer-events: none;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+      align-items: center;
+      padding: 0.3rem 0.4rem 0.85rem;
+      border-bottom: 1px solid rgba(177, 197, 237, 0.18);
+      font-size: 0.8rem;
+      color: #b8c3e6;
+    }
+
+    .status-dot {
+      display: inline-flex;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #8de2c0;
+      box-shadow: 0 0 10px rgba(145, 236, 200, 0.7);
+      margin-right: 0.4rem;
+    }
+
+    .mock-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 0.9rem;
+      margin-top: 1rem;
+    }
+
+    .mock-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(186, 205, 245, 0.15);
+      border-radius: 14px;
+      padding: 0.9rem;
+    }
+
+    .mock-line {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(220, 230, 255, 0.16);
+      margin-bottom: 0.6rem;
+    }
+
+    .mock-line.wide { width: 100%; }
+    .mock-line.mid { width: 68%; }
+    .mock-line.short { width: 40%; }
+
+    .score {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 0.6rem;
+      width: 128px;
+      height: 128px;
+      border-radius: 50%;
+      border: 1px solid rgba(180, 200, 255, 0.22);
+      margin-inline: auto;
+      background: radial-gradient(circle, rgba(127, 180, 247, 0.2), rgba(59, 88, 145, 0.08));
+      font-size: 1.65rem;
+      font-weight: 700;
+    }
+
+    .three-col {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .card {
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+      border: 1px solid rgba(184, 201, 236, 0.16);
+      border-radius: var(--radius);
+      padding: 1.15rem;
+      transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(174, 202, 255, 0.32);
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+    }
+
+    .card h3 {
+      font-size: 1.02rem;
+      margin-bottom: 0.55rem;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+      counter-reset: steps;
+    }
+
+    .step {
+      position: relative;
+      padding: 1.15rem 1.05rem 1.05rem 3rem;
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(176, 196, 233, 0.16);
+    }
+
+    .step::before {
+      counter-increment: steps;
+      content: counter(steps);
+      position: absolute;
+      left: 0.9rem;
+      top: 0.95rem;
+      width: 1.55rem;
+      height: 1.55rem;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #061029;
+      font-size: 0.8rem;
+      font-weight: 700;
+      background: linear-gradient(140deg, #afc3ff, #92b9ff);
+    }
+
+    .demo {
+      border-radius: 24px;
+      border: 1px solid rgba(182, 201, 241, 0.2);
+      background: linear-gradient(170deg, rgba(18, 24, 39, 0.9), rgba(10, 13, 22, 0.95));
+      box-shadow: var(--shadow);
+      padding: clamp(1rem, 2vw, 1.6rem);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .demo::after {
+      content: "";
+      position: absolute;
+      width: 360px;
+      height: 360px;
+      right: -180px;
+      bottom: -200px;
+      background: radial-gradient(circle, rgba(156, 139, 255, 0.2), transparent 70%);
+      pointer-events: none;
+    }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .upload-zone {
+      border: 1px dashed rgba(168, 191, 241, 0.4);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.02);
+      min-height: 230px;
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+      text-align: center;
+      transition: border-color 180ms ease, background-color 180ms ease;
+      cursor: pointer;
+    }
+
+    .upload-zone:hover {
+      border-color: rgba(176, 201, 255, 0.65);
+      background: rgba(170, 196, 255, 0.05);
+    }
+
+    .upload-zone img {
+      width: 100%;
+      height: 210px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 1px solid rgba(196, 213, 246, 0.22);
+    }
+
+    .demo-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      margin-top: 0.9rem;
+      flex-wrap: wrap;
+    }
+
+    .file-name {
+      font-size: 0.86rem;
+      color: #c6d1ef;
+    }
+
+    .results {
+      border-radius: var(--radius);
+      border: 1px solid rgba(170, 190, 231, 0.2);
+      background: rgba(255, 255, 255, 0.03);
+      padding: 1rem;
+      min-height: 295px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .result-badge {
+      width: fit-content;
+      padding: 0.38rem 0.72rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #d8e2ff;
+    }
+
+    .result-title {
+      font-size: 1.22rem;
+      font-weight: 650;
+    }
+
+    .checks {
+      display: grid;
+      gap: 0.6rem;
+    }
+
+    .check-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.6rem;
+      font-size: 0.9rem;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(175, 194, 232, 0.14);
+    }
+
+    .status-pill {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid;
+      white-space: nowrap;
+    }
+
+    .ok { color: var(--good); border-color: rgba(127, 230, 187, 0.42); background: rgba(127, 230, 187, 0.12); }
+    .warn { color: var(--warn); border-color: rgba(255, 209, 143, 0.46); background: rgba(255, 209, 143, 0.14); }
+    .bad { color: var(--bad); border-color: rgba(255, 157, 163, 0.45); background: rgba(255, 157, 163, 0.15); }
+
+    .faq {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    details {
+      border: 1px solid rgba(170, 190, 231, 0.16);
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: #e3e9fb;
+      list-style: none;
+    }
+
+    summary::-webkit-details-marker { display: none; }
+
+    details p {
+      margin-top: 0.7rem;
+      font-size: 0.95rem;
+    }
+
+    footer {
+      border-top: 1px solid rgba(165, 187, 232, 0.16);
+      padding: 1.6rem 0 2.2rem;
+      color: #a9b4ce;
+      font-size: 0.88rem;
+      text-align: center;
+    }
+
+    @media (max-width: 980px) {
+      .hero, .demo-grid { grid-template-columns: 1fr; }
+      .three-col, .steps { grid-template-columns: 1fr 1fr; }
+      .nav-links { display: none; }
+    }
+
+    @media (max-width: 640px) {
+      .section { padding: 4.2rem 0; }
+      .three-col, .steps { grid-template-columns: 1fr; }
+      .container { width: min(var(--max-w), calc(100% - 1.3rem)); }
+      .hero { padding-top: 4.8rem; }
+      .hero-panel { min-height: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav-wrap">
+      <a href="#top" class="brand" aria-label="AITHENA-Tech home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>AITHENA-Tech</span>
+      </a>
+      <nav class="nav-links" aria-label="Main">
+        <a href="#problem">Problem</a>
+        <a href="#what">What it does</a>
+        <a href="#demo">Demo</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="section">
+      <div class="container hero">
+        <div>
+          <span class="eyebrow">PixelProof · authenticity clue check</span>
+          <h1>Know how trustworthy an image looks before you rely on it.</h1>
+          <p>
+            PixelProof by AITHENA-Tech gives a practical authenticity-style assessment based on file clues, structural hints, metadata availability, and visible signal quality — with clear language and no false certainty.
+          </p>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="#demo">Try interactive demo</a>
+            <a class="btn btn-ghost" href="#what">See how it works</a>
+          </div>
+        </div>
+
+        <aside class="hero-panel" aria-label="Product interface preview">
+          <div class="panel-head">
+            <span><span class="status-dot"></span>PixelProof session active</span>
+            <span>Audit snapshot</span>
+          </div>
+          <div class="mock-grid">
+            <div class="mock-card">
+              <div class="mock-line wide"></div>
+              <div class="mock-line mid"></div>
+              <div class="mock-line short"></div>
+              <div class="mock-line wide"></div>
+            </div>
+            <div class="mock-card">
+              <div class="score">78</div>
+              <p style="text-align:center; margin-top:0.55rem;">Confidence range</p>
+            </div>
+            <div class="mock-card" style="grid-column: 1 / -1;">
+              <div class="check-item"><span>Metadata availability</span><span class="status-pill warn">Partial</span></div>
+              <div class="check-item"><span>Structural consistency</span><span class="status-pill ok">Normal</span></div>
+              <div class="check-item"><span>Export signature hint</span><span class="status-pill warn">Detected</span></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="problem" class="section">
+      <div class="container">
+        <h2>Trust is harder than it looks in modern image workflows.</h2>
+        <p class="section-lead">
+          Images online are routinely edited, re-exported, compressed, screenshotted, or stripped of original source clues. A picture can look convincing while carrying traces of heavy post-processing — or lose innocent context through ordinary platform handling.
+        </p>
+        <div class="three-col">
+          <article class="card">
+            <h3>Editing is frictionless</h3>
+            <p>Simple retouching tools can alter context quickly, often without obvious visual artifacts at first glance.</p>
+          </article>
+          <article class="card">
+            <h3>Distribution mutates files</h3>
+            <p>Resharing across apps can remove metadata, resize images, and alter compression patterns unexpectedly.</p>
+          </article>
+          <article class="card">
+            <h3>Visual intuition isn’t enough</h3>
+            <p>Trust decisions need structured clues, not just instinct or overconfident AI-style claims.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="what" class="section">
+      <div class="container">
+        <h2>What PixelProof does — and what it does not.</h2>
+        <p class="section-lead">
+          PixelProof evaluates authenticity clues and presents a readable verdict. It does not claim absolute truth, identity verification, or perfect detection. It helps you assess signals with more discipline and less guesswork.
+        </p>
+        <div class="three-col">
+          <article class="card">
+            <h3>Checks clue availability</h3>
+            <p>Looks for useful source indicators such as metadata presence and expected file-level context.</p>
+          </article>
+          <article class="card">
+            <h3>Inspects structure hints</h3>
+            <p>Surfaces signs tied to re-export, aggressive compression, or potentially inconsistent file patterns.</p>
+          </article>
+          <article class="card">
+            <h3>Returns a practical verdict</h3>
+            <p>Outputs clear labels like structurally normal, missing clues, potentially edited, or inconclusive.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>How it works</h2>
+        <p class="section-lead">A fast three-step flow designed for real-world decisions.</p>
+        <div class="steps">
+          <article class="step">
+            <h3>Upload image</h3>
+            <p>Select a file you want to assess. PixelProof prepares a structured clue pass.</p>
+          </article>
+          <article class="step">
+            <h3>Analyze clues</h3>
+            <p>The engine evaluates metadata presence, structural hints, and visible signal quality markers.</p>
+          </article>
+          <article class="step">
+            <h3>Read verdict</h3>
+            <p>Get a concise result card with signal-level notes you can review and communicate clearly.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>Premium feature set</h2>
+        <div class="three-col">
+          <article class="card"><h3>Metadata presence check</h3><p>Highlights whether expected metadata fields are available, partial, or absent.</p></article>
+          <article class="card"><h3>Structural file clues</h3><p>Examines format-level hints that can indicate normal origin or unusual processing paths.</p></article>
+          <article class="card"><h3>Recompression signals</h3><p>Flags patterns often associated with repeated exports and aggressive quality loss.</p></article>
+          <article class="card"><h3>Readable verdict labels</h3><p>Communicates findings with balanced language instead of dramatic certainty.</p></article>
+          <article class="card"><h3>Clarity-first report design</h3><p>Turns technical observations into concise, understandable insight for non-experts.</p></article>
+          <article class="card"><h3>Privacy-friendly demo model</h3><p>The interactive demo runs locally in your browser session and does not upload files to a server.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="demo" class="section">
+      <div class="container">
+        <h2>Interactive demo</h2>
+        <p class="section-lead">Upload an image and run a simulated clue scan to preview PixelProof’s verdict experience.</p>
+
+        <div class="demo">
+          <div class="demo-grid">
+            <div>
+              <label for="imageInput" class="upload-zone" id="uploadZone">
+                <div id="uploadPrompt">
+                  <strong style="display:block; font-size:1rem; margin-bottom:0.35rem;">Drop image here or click to browse</strong>
+                  <span style="font-size:0.92rem; color:#9aa6c6;">JPG, PNG, WEBP • single file</span>
+                </div>
+                <img id="previewImage" alt="Selected image preview" hidden />
+              </label>
+              <input id="imageInput" type="file" accept="image/*" hidden />
+
+              <div class="demo-controls">
+                <button class="btn btn-primary" id="scanBtn" type="button">Run clue scan</button>
+                <span class="file-name" id="fileName">No file selected</span>
+              </div>
+            </div>
+
+            <article class="results" aria-live="polite" id="resultCard">
+              <span class="result-badge">Awaiting scan</span>
+              <div class="result-title">Select an image to begin</div>
+              <p>PixelProof will simulate an authenticity-style clue assessment and show a practical verdict card.</p>
+              <div class="checks" id="checks"></div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>Built for trust, without overpromising certainty.</h2>
+        <p class="section-lead">
+          PixelProof is a clue-checking tool, not a final judge. A result can inform decisions, but context, source verification, and domain expertise still matter. Responsible use means combining signal analysis with human judgment.
+        </p>
+      </div>
+    </section>
+
+    <section id="faq" class="section">
+      <div class="container">
+        <h2>FAQ</h2>
+        <div class="faq">
+          <details>
+            <summary>Is PixelProof an AI detector?</summary>
+            <p>No. PixelProof is an authenticity clue-checking tool. It evaluates practical file and quality signals instead of claiming to detect AI-generated content with absolute certainty.</p>
+          </details>
+          <details>
+            <summary>Can missing metadata prove an image is fake?</summary>
+            <p>Not by itself. Metadata can be removed for normal reasons, including social media re-encoding. Missing metadata is one signal, not definitive proof.</p>
+          </details>
+          <details>
+            <summary>Does PixelProof store uploaded images?</summary>
+            <p>In this demo, files stay in your local browser session. Production implementations can be configured with strict retention and privacy controls.</p>
+          </details>
+          <details>
+            <summary>Can PixelProof verify every image?</summary>
+            <p>No single tool can guarantee verification for every case. PixelProof helps surface clues and confidence boundaries so decisions are better informed.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">PixelProof by AITHENA-Tech · Practical image authenticity clue assessment.</div>
+  </footer>
+
+  <script>
+    const imageInput = document.getElementById('imageInput');
+    const uploadZone = document.getElementById('uploadZone');
+    const uploadPrompt = document.getElementById('uploadPrompt');
+    const previewImage = document.getElementById('previewImage');
+    const fileName = document.getElementById('fileName');
+    const scanBtn = document.getElementById('scanBtn');
+    const resultCard = document.getElementById('resultCard');
+    const checks = document.getElementById('checks');
+
+    let selectedFile = null;
+
+    function loadImageMetrics(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const probe = new Image();
+
+        probe.onload = () => {
+          const metrics = {
+            width: probe.naturalWidth,
+            height: probe.naturalHeight,
+            aspectRatio: probe.naturalWidth / probe.naturalHeight,
+            pixelCount: probe.naturalWidth * probe.naturalHeight
+          };
+          URL.revokeObjectURL(url);
+          resolve(metrics);
+        };
+
+        probe.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error('Unable to read image dimensions'));
+        };
+
+        probe.src = url;
+      });
+    }
+
+    function classifyScore(value) {
+      if (value >= 5) return ['Strong', 'bad'];
+      if (value >= 3) return ['Possible', 'warn'];
+      return ['Low', 'ok'];
+    }
+
+    function inferVerdict(file, metrics) {
+      const normalizedName = file.name.toLowerCase();
+      const ext = (normalizedName.split('.').pop() || '').trim();
+      const fileSize = file.size;
+      const ratio = metrics.aspectRatio;
+      const bytesPerPixel = metrics.pixelCount ? fileSize / metrics.pixelCount : 0;
+
+      const nameHints = /(edited|edit|screenshot|screen-shot|screen_shot|copy|final|export|compressed|reexport|retouch|filtered|enhanced|v\d|version)/i.test(normalizedName);
+      const screenshotHint = /(screenshot|screen-shot|screen_shot|capture|snip|clipboard)/i.test(normalizedName);
+      const exportHint = /(export|final|copy|compressed|reexport|save[-_ ]?as|edited)/i.test(normalizedName);
+
+      const verySmallFile = fileSize < 90 * 1024;
+      const smallImage = metrics.pixelCount < 320 * 320;
+      const unusualAspect = ratio > 2.25 || ratio < 0.5;
+      const commonScreenshotShape = (
+        (metrics.width >= 1200 && metrics.height >= 700 && ratio > 1.45 && ratio < 1.9) ||
+        (metrics.width >= 900 && metrics.height >= 900 && Math.abs(ratio - 1) < 0.03)
+      );
+
+      const lowByteDensity = bytesPerPixel > 0 && bytesPerPixel < 0.12;
+      const heavyByteDensity = bytesPerPixel > 1.15;
+      const likelyRecompressed = (ext === 'jpg' || ext === 'jpeg' || ext === 'webp') && (lowByteDensity || verySmallFile);
+      const suspiciousCompression = likelyRecompressed || (exportHint && bytesPerPixel < 0.18);
+
+      const metadataRisk = (
+        (ext === 'png' && screenshotHint) +
+        (nameHints ? 1 : 0) +
+        (verySmallFile ? 2 : 0) +
+        (smallImage ? 1 : 0)
+      );
+
+      const structuralRisk = (
+        (unusualAspect ? 2 : 0) +
+        (smallImage ? 1 : 0) +
+        (commonScreenshotShape && screenshotHint ? 1 : 0) +
+        (heavyByteDensity ? 1 : 0)
+      );
+
+      const exportRisk = (
+        (exportHint ? 2 : 0) +
+        (suspiciousCompression ? 2 : 0) +
+        (likelyRecompressed ? 1 : 0) +
+        (nameHints ? 1 : 0)
+      );
+
+      const screenshotRisk = (screenshotHint ? 2 : 0) + (commonScreenshotShape ? 1 : 0);
+      const totalRisk = metadataRisk + structuralRisk + exportRisk + screenshotRisk;
+      const limitedEvidence = metrics.pixelCount < 250000 || fileSize < 55 * 1024;
+
+      let verdictTitle = 'Looks structurally normal';
+      let verdictSummary = 'No strong anomaly signature detected in this clue-based pass. Source context is still recommended.';
+
+      if (totalRisk >= 9 || exportRisk >= 5 || (nameHints && suspiciousCompression)) {
+        verdictTitle = 'Potentially edited or re-exported';
+        verdictSummary = 'Multiple file-level clues suggest post-processing or repeated export patterns. Treat as higher risk until corroborated.';
+      } else if (limitedEvidence || (totalRisk >= 5 && totalRisk < 9)) {
+        verdictTitle = 'Some authenticity clues are missing';
+        verdictSummary = 'This image appears usable, but available clues are limited or partially degraded, reducing confidence.';
+      } else if ((totalRisk >= 3 && totalRisk < 5) || (screenshotRisk >= 2 && !exportHint && !suspiciousCompression)) {
+        verdictTitle = 'Inconclusive';
+        verdictSummary = 'Signals are mixed in this pass. Additional source validation and context checks are advised.';
+      }
+
+      const [metadataValue, metadataTone] = metadataRisk >= 4
+        ? ['Missing', 'warn']
+        : metadataRisk >= 2
+          ? ['Partial', 'warn']
+          : ['Available', 'ok'];
+
+      const [structureValue, structureTone] = structuralRisk >= 4
+        ? ['Irregular', 'bad']
+        : structuralRisk >= 2
+          ? ['Mixed', 'warn']
+          : ['Normal', 'ok'];
+
+      const [exportValue, exportTone] = classifyScore(exportRisk);
+
+      return {
+        badge: 'Verdict',
+        title: verdictTitle,
+        summary: verdictSummary,
+        items: [
+          ['Metadata presence', metadataValue, metadataTone],
+          ['Structural consistency', structureValue, structureTone],
+          ['Re-export hint', exportValue, exportTone]
+        ]
+      };
+    }
+
+    function showFile(file) {
+      selectedFile = file;
+      fileName.textContent = file ? file.name : 'No file selected';
+
+      if (!file) {
+        previewImage.hidden = true;
+        uploadPrompt.hidden = false;
+        previewImage.src = '';
+        return;
+      }
+
+      const url = URL.createObjectURL(file);
+      previewImage.src = url;
+      previewImage.hidden = false;
+      uploadPrompt.hidden = true;
+    }
+
+    function setResult(state) {
+      resultCard.innerHTML = `
+        <span class="result-badge">${state.badge}</span>
+        <div class="result-title">${state.title}</div>
+        <p>${state.summary}</p>
+        <div class="checks">
+          ${state.items.map(([label, value, tone]) => `
+            <div class="check-item">
+              <span>${label}</span>
+              <span class="status-pill ${tone}">${value}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    imageInput.addEventListener('change', (event) => {
+      const file = event.target.files?.[0] || null;
+      showFile(file);
+    });
+
+    uploadZone.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      uploadZone.style.borderColor = 'rgba(176, 201, 255, 0.8)';
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.style.borderColor = 'rgba(168, 191, 241, 0.4)';
+    });
+
+    uploadZone.addEventListener('drop', (event) => {
+      event.preventDefault();
+      uploadZone.style.borderColor = 'rgba(168, 191, 241, 0.4)';
+      const file = event.dataTransfer.files?.[0];
+      if (file && file.type.startsWith('image/')) {
+        imageInput.files = event.dataTransfer.files;
+        showFile(file);
+      }
+    });
+
+    scanBtn.addEventListener('click', () => {
+      if (!selectedFile) {
+        setResult({
+          badge: 'Input needed',
+          title: 'Please select an image first',
+          summary: 'Upload a file to run a simulated clue scan.',
+          items: [
+            ['Metadata presence', 'Not checked', 'warn'],
+            ['Structural consistency', 'Not checked', 'warn'],
+            ['Re-export hint', 'Not checked', 'warn']
+          ]
+        });
+        return;
+      }
+
+      scanBtn.disabled = true;
+      scanBtn.textContent = 'Scanning…';
+
+      setResult({
+        badge: 'Processing',
+        title: 'Analyzing authenticity clues',
+        summary: 'Running metadata, structural, and signal quality checks…',
+        items: [
+          ['Metadata presence', 'Analyzing', 'warn'],
+          ['Structural consistency', 'Analyzing', 'warn'],
+          ['Re-export hint', 'Analyzing', 'warn']
+        ]
+      });
+
+      const wait = 1200 + Math.floor(Math.random() * 800);
+      setTimeout(async () => {
+        try {
+          const metrics = await loadImageMetrics(selectedFile);
+          const result = inferVerdict(selectedFile, metrics);
+          setResult(result);
+        } catch (error) {
+          setResult({
+            badge: 'Inconclusive',
+            title: 'Inconclusive',
+            summary: 'PixelProof could not extract reliable file clues from this image in the current session.',
+            items: [
+              ['Metadata presence', 'Unclear', 'warn'],
+              ['Structural consistency', 'Unclear', 'warn'],
+              ['Re-export hint', 'Unclear', 'warn']
+            ]
+          });
+        } finally {
+          scanBtn.disabled = false;
+          scanBtn.textContent = 'Run clue scan';
+        }
+      }, wait);
+    });
+  </script>
+</body>
+</html>
