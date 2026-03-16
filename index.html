@@ -666,7 +666,7 @@
         <div class="demo">
           <div class="demo-grid">
             <div>
-              <label for="imageInput" class="upload-zone" id="uploadZone" role="button" tabindex="0">
+              <label for="imageInput" class="upload-zone" id="uploadZone">
                 <div id="uploadPrompt">
                   <strong style="display:block; font-size:1rem; margin-bottom:0.35rem;">Drop image here or click to browse</strong>
                   <span style="font-size:0.92rem; color:#9aa6c6;">JPG, PNG, WEBP • single file</span>
@@ -925,6 +925,7 @@
       uploadZone.style.borderColor = 'rgba(168, 191, 241, 0.4)';
       const file = event.dataTransfer.files?.[0];
       if (file && file.type.startsWith('image/')) {
+        imageInput.files = event.dataTransfer.files;
         showFile(file);
       }
     });
