@@ -742,48 +742,125 @@
 
     let selectedFile = null;
 
-    const verdicts = [
-      {
-        badge: 'Verdict',
-        title: 'Looks structurally normal',
-        summary: 'No strong anomaly signature detected in this simulated pass. Source context still recommended.',
-        items: [
-          ['Metadata presence', 'Available', 'ok'],
-          ['Structural consistency', 'Normal', 'ok'],
-          ['Re-export hint', 'Low', 'ok']
-        ]
-      },
-      {
-        badge: 'Verdict',
-        title: 'Some authenticity clues are missing',
-        summary: 'The file appears usable, but key source clues are limited. Confidence should be moderate.',
-        items: [
-          ['Metadata presence', 'Sparse', 'warn'],
-          ['Structural consistency', 'Mostly normal', 'ok'],
-          ['Re-export hint', 'Possible', 'warn']
-        ]
-      },
-      {
-        badge: 'Verdict',
-        title: 'Potentially edited or re-exported',
-        summary: 'This result indicates stronger signs of post-processing patterns. Treat as higher-risk until corroborated.',
-        items: [
-          ['Metadata presence', 'Missing', 'warn'],
-          ['Structural consistency', 'Irregular', 'bad'],
-          ['Re-export hint', 'Strong', 'bad']
-        ]
-      },
-      {
-        badge: 'Verdict',
-        title: 'Inconclusive',
-        summary: 'Signals are mixed and not decisive in this pass. Additional source validation is advised.',
-        items: [
-          ['Metadata presence', 'Partial', 'warn'],
-          ['Structural consistency', 'Mixed', 'warn'],
-          ['Re-export hint', 'Unclear', 'warn']
-        ]
+    function loadImageMetrics(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const probe = new Image();
+
+        probe.onload = () => {
+          const metrics = {
+            width: probe.naturalWidth,
+            height: probe.naturalHeight,
+            aspectRatio: probe.naturalWidth / probe.naturalHeight,
+            pixelCount: probe.naturalWidth * probe.naturalHeight
+          };
+          URL.revokeObjectURL(url);
+          resolve(metrics);
+        };
+
+        probe.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error('Unable to read image dimensions'));
+        };
+
+        probe.src = url;
+      });
+    }
+
+    function classifyScore(value) {
+      if (value >= 5) return ['Strong', 'bad'];
+      if (value >= 3) return ['Possible', 'warn'];
+      return ['Low', 'ok'];
+    }
+
+    function inferVerdict(file, metrics) {
+      const normalizedName = file.name.toLowerCase();
+      const ext = (normalizedName.split('.').pop() || '').trim();
+      const fileSize = file.size;
+      const ratio = metrics.aspectRatio;
+      const bytesPerPixel = metrics.pixelCount ? fileSize / metrics.pixelCount : 0;
+
+      const nameHints = /(edited|edit|screenshot|screen-shot|screen_shot|copy|final|export|compressed|reexport|retouch|filtered|enhanced|v\d|version)/i.test(normalizedName);
+      const screenshotHint = /(screenshot|screen-shot|screen_shot|capture|snip|clipboard)/i.test(normalizedName);
+      const exportHint = /(export|final|copy|compressed|reexport|save[-_ ]?as|edited)/i.test(normalizedName);
+
+      const verySmallFile = fileSize < 90 * 1024;
+      const smallImage = metrics.pixelCount < 320 * 320;
+      const unusualAspect = ratio > 2.25 || ratio < 0.5;
+      const commonScreenshotShape = (
+        (metrics.width >= 1200 && metrics.height >= 700 && ratio > 1.45 && ratio < 1.9) ||
+        (metrics.width >= 900 && metrics.height >= 900 && Math.abs(ratio - 1) < 0.03)
+      );
+
+      const lowByteDensity = bytesPerPixel > 0 && bytesPerPixel < 0.12;
+      const heavyByteDensity = bytesPerPixel > 1.15;
+      const likelyRecompressed = (ext === 'jpg' || ext === 'jpeg' || ext === 'webp') && (lowByteDensity || verySmallFile);
+      const suspiciousCompression = likelyRecompressed || (exportHint && bytesPerPixel < 0.18);
+
+      const metadataRisk = (
+        (ext === 'png' && screenshotHint) +
+        (nameHints ? 1 : 0) +
+        (verySmallFile ? 2 : 0) +
+        (smallImage ? 1 : 0)
+      );
+
+      const structuralRisk = (
+        (unusualAspect ? 2 : 0) +
+        (smallImage ? 1 : 0) +
+        (commonScreenshotShape && screenshotHint ? 1 : 0) +
+        (heavyByteDensity ? 1 : 0)
+      );
+
+      const exportRisk = (
+        (exportHint ? 2 : 0) +
+        (suspiciousCompression ? 2 : 0) +
+        (likelyRecompressed ? 1 : 0) +
+        (nameHints ? 1 : 0)
+      );
+
+      const screenshotRisk = (screenshotHint ? 2 : 0) + (commonScreenshotShape ? 1 : 0);
+      const totalRisk = metadataRisk + structuralRisk + exportRisk + screenshotRisk;
+      const limitedEvidence = metrics.pixelCount < 250000 || fileSize < 55 * 1024;
+
+      let verdictTitle = 'Looks structurally normal';
+      let verdictSummary = 'No strong anomaly signature detected in this clue-based pass. Source context is still recommended.';
+
+      if (totalRisk >= 9 || exportRisk >= 5 || (nameHints && suspiciousCompression)) {
+        verdictTitle = 'Potentially edited or re-exported';
+        verdictSummary = 'Multiple file-level clues suggest post-processing or repeated export patterns. Treat as higher risk until corroborated.';
+      } else if (limitedEvidence || (totalRisk >= 5 && totalRisk < 9)) {
+        verdictTitle = 'Some authenticity clues are missing';
+        verdictSummary = 'This image appears usable, but available clues are limited or partially degraded, reducing confidence.';
+      } else if ((totalRisk >= 3 && totalRisk < 5) || (screenshotRisk >= 2 && !exportHint && !suspiciousCompression)) {
+        verdictTitle = 'Inconclusive';
+        verdictSummary = 'Signals are mixed in this pass. Additional source validation and context checks are advised.';
       }
-    ];
+
+      const [metadataValue, metadataTone] = metadataRisk >= 4
+        ? ['Missing', 'warn']
+        : metadataRisk >= 2
+          ? ['Partial', 'warn']
+          : ['Available', 'ok'];
+
+      const [structureValue, structureTone] = structuralRisk >= 4
+        ? ['Irregular', 'bad']
+        : structuralRisk >= 2
+          ? ['Mixed', 'warn']
+          : ['Normal', 'ok'];
+
+      const [exportValue, exportTone] = classifyScore(exportRisk);
+
+      return {
+        badge: 'Verdict',
+        title: verdictTitle,
+        summary: verdictSummary,
+        items: [
+          ['Metadata presence', metadataValue, metadataTone],
+          ['Structural consistency', structureValue, structureTone],
+          ['Re-export hint', exportValue, exportTone]
+        ]
+      };
+    }
 
     function showFile(file) {
       selectedFile = file;
@@ -821,6 +898,17 @@
     imageInput.addEventListener('change', (event) => {
       const file = event.target.files?.[0] || null;
       showFile(file);
+    });
+
+    uploadZone.addEventListener('click', () => {
+      imageInput.click();
+    });
+
+    uploadZone.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        imageInput.click();
+      }
     });
 
     uploadZone.addEventListener('dragover', (event) => {
@@ -892,12 +980,6 @@
           scanBtn.disabled = false;
           scanBtn.textContent = 'Run clue scan';
         }
-      const wait = 1200 + Math.floor(Math.random() * 1200);
-      setTimeout(() => {
-        const result = verdicts[Math.floor(Math.random() * verdicts.length)];
-        setResult(result);
-        scanBtn.disabled = false;
-        scanBtn.textContent = 'Run clue scan';
       }, wait);
     });
   </script>
