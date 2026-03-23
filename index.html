@@ -910,6 +910,31 @@
       showFile(file);
     });
 
+    const openFilePicker = () => {
+      if (typeof imageInput.showPicker === 'function') {
+        imageInput.showPicker();
+        return;
+      }
+      imageInput.click();
+    };
+
+    uploadZone.addEventListener('click', (event) => {
+      event.preventDefault();
+      openFilePicker();
+    });
+
+    uploadZone.addEventListener('touchend', (event) => {
+      event.preventDefault();
+      openFilePicker();
+    }, { passive: false });
+
+    uploadZone.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openFilePicker();
+      }
+    });
+
     uploadZone.addEventListener('dragover', (event) => {
       event.preventDefault();
       uploadZone.style.borderColor = 'rgba(176, 201, 255, 0.8)';
