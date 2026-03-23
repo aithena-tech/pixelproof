@@ -396,6 +396,7 @@
     }
 
 
+    /* Keep the native input in the DOM for reliable mobile picker behavior. */
     .file-input-native {
       position: absolute;
       left: -9999px;
@@ -925,6 +926,7 @@
       showFile(file);
     });
 
+    // Single picker path used after conflict resolution for consistent tap/click behavior.
     const openFilePicker = () => {
       if (typeof imageInput.showPicker === 'function') {
         imageInput.showPicker();
@@ -964,6 +966,7 @@
       uploadZone.style.borderColor = 'rgba(168, 191, 241, 0.4)';
       const file = event.dataTransfer.files?.[0];
       if (file && file.type.startsWith('image/')) {
+        // Use direct local preview state; avoid assigning to imageInput.files in DnD flow.
         showFile(file);
       }
     });
