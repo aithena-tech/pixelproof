@@ -949,6 +949,7 @@
       uploadZone.style.borderColor = 'rgba(168, 191, 241, 0.4)';
       const file = event.dataTransfer.files?.[0];
       if (file && file.type.startsWith('image/')) {
+        imageInput.files = event.dataTransfer.files;
         showFile(file);
       }
     });
