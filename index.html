@@ -378,6 +378,7 @@
 
     .upload-zone {
       border: 1px dashed rgba(168, 191, 241, 0.4);
+      position: relative;
       border-radius: var(--radius);
       background: rgba(255, 255, 255, 0.02);
       min-height: 230px;
@@ -392,6 +393,15 @@
     .upload-zone:hover {
       border-color: rgba(176, 201, 255, 0.65);
       background: rgba(170, 196, 255, 0.05);
+    }
+
+
+    .file-input-native {
+      position: absolute;
+      left: -9999px;
+      width: 1px;
+      height: 1px;
+      opacity: 0.001;
     }
 
     .upload-zone img {
@@ -666,14 +676,14 @@
         <div class="demo">
           <div class="demo-grid">
             <div>
-              <label for="imageInput" class="upload-zone" id="uploadZone">
+              <label class="upload-zone" id="uploadZone" role="button" tabindex="0">
                 <div id="uploadPrompt">
                   <strong style="display:block; font-size:1rem; margin-bottom:0.35rem;">Drop image here or click to browse</strong>
                   <span style="font-size:0.92rem; color:#9aa6c6;">JPG, PNG, WEBP • single file</span>
                 </div>
                 <img id="previewImage" alt="Selected image preview" hidden />
               </label>
-              <input id="imageInput" type="file" accept="image/*" hidden />
+              <input id="imageInput" class="file-input-native" type="file" accept="image/*" aria-label="Upload image file" />
 
               <div class="demo-controls">
                 <button class="btn btn-primary" id="scanBtn" type="button">Run clue scan</button>
@@ -900,14 +910,28 @@
       showFile(file);
     });
 
-    uploadZone.addEventListener('click', () => {
+    const openFilePicker = () => {
+      if (typeof imageInput.showPicker === 'function') {
+        imageInput.showPicker();
+        return;
+      }
       imageInput.click();
+    };
+
+    uploadZone.addEventListener('click', (event) => {
+      event.preventDefault();
+      openFilePicker();
     });
+
+    uploadZone.addEventListener('touchend', (event) => {
+      event.preventDefault();
+      openFilePicker();
+    }, { passive: false });
 
     uploadZone.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        imageInput.click();
+        openFilePicker();
       }
     });
 
